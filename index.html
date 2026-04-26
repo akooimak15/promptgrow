@@ -171,15 +171,15 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
     <!-- COMPOSE -->
     <div class="screen" id="screen-compose">
       <div class="compose-step">
-        <div class="step-num">01 — TEMPLATE</div>
-        <div class="template-grid" id="template-select"></div>
-        <div style="padding-top:10px">
-          <div class="empty-text" id="no-template-msg" style="display:none">テンプレートがありません。まず「TEMPLATE」タブで作成してください。</div>
-        </div>
+        <div class="step-num">01 — RAW DATA</div>
+        <textarea class="raw-input" id="raw-input" placeholder="今日の閃き・メモ・素材を貼り付け..." oninput="updatePreview()"></textarea>
       </div>
       <div class="compose-step" style="border-bottom:none">
-        <div class="step-num">02 — RAW DATA</div>
-        <textarea class="raw-input" id="raw-input" placeholder="今日の閃き・メモ・素材を貼り付け..." oninput="updatePreview()"></textarea>
+        <div class="step-num">02 — TEMPLATE</div>
+        <div class="template-grid" id="template-select"></div>
+        <div style="padding-top:10px">
+          <div class="empty-text" id="no-template-msg" style="display:none">テンプレートがありません。まず「LOG」タブで作成してください。</div>
+        </div>
       </div>
       <div class="preview-block" id="preview-block">テンプレートを選択してください</div>
       <div style="height:80px"></div>
