@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="PromptGrow">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>PromptGrow</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg2: #f7f7f7;
+  --bg3: #efefef;
+  --ink: #000000;
+  --ink2: #555555;
+  --ink3: #999999;
+  --line: #e0e0e0;
+  --accent: #000000;
+  --danger: #cc0000;
+  --r: 6px;
+  --font: 'DM Mono', 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); }
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* Layout */
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; max-width: 480px; margin: 0 auto; }
+#header { padding: 16px 20px 10px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+#header-top { display: flex; align-items: baseline; justify-content: space-between; }
+.wordmark { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; }
+.wordmark span { opacity: 0.35; }
+.header-action { font-size: 11px; color: var(--ink3); letter-spacing: 0.05em; cursor: pointer; padding: 4px 0; }
+#tabs { display: flex; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.tab { flex: 1; padding: 10px 0; font-size: 11px; letter-spacing: 0.1em; text-align: center; cursor: pointer; color: var(--ink3); border-bottom: 1.5px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+.tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+#content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Screens */
+.screen { display: none; padding: 0 0 80px; }
+.screen.active { display: block; }
+
+/* Section */
+.sec { padding: 16px 20px 0; }
+.sec-label { font-size: 10px; letter-spacing: 0.12em; color: var(--ink3); margin-bottom: 10px; }
+
+/* Cards */
+.card-list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 12px; }
+.card-item { background: var(--bg); padding: 14px 20px; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: background 0.1s; }
+.card-item:active { background: var(--bg2); }
+.card-check { width: 18px; height: 18px; border: 1px solid var(--line); border-radius: 3px; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.card-check.checked { background: var(--ink); border-color: var(--ink); }
+.card-check.checked::after { content: ''; display: block; width: 5px; height: 9px; border-right: 1.5px solid var(--bg); border-bottom: 1.5px solid var(--bg); transform: rotate(45deg) translateY(-1px); }
+.card-body { flex: 1; min-width: 0; }
+.card-title { font-size: 13px; font-weight: 500; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-desc { font-size: 11px; color: var(--ink3); margin-top: 3px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.pill { font-size: 10px; letter-spacing: 0.06em; padding: 2px 7px; border: 1px solid var(--line); border-radius: 20px; color: var(--ink3); white-space: nowrap; }
+.card-arrow { color: var(--ink3); font-size: 14px; margin-top: 2px; flex-shrink: 0; }
+
+/* Empty state */
+.empty { padding: 48px 20px; text-align: center; }
+.empty-icon { font-size: 32px; opacity: 0.15; margin-bottom: 12px; }
+.empty-text { font-size: 11px; color: var(--ink3); letter-spacing: 0.08em; line-height: 1.8; }
+
+/* FAB */
+#fab { position: fixed; bottom: 24px; right: max(20px, calc(50% - 220px)); width: 48px; height: 48px; background: var(--ink); color: var(--bg); border: none; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 50; }
+#fab:active { transform: scale(0.92); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--bg); border-radius: 14px 14px 0 0; width: 100%; max-width: 480px; margin: 0 auto; padding: 20px 20px 40px; max-height: 92dvh; overflow-y: auto; transform: translateY(20px); transition: transform 0.2s; }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.btn { padding: 11px 18px; font-size: 12px; letter-spacing: 0.08em; border-radius: var(--r); cursor: pointer; font-family: var(--font); transition: all 0.1s; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); flex: 1; }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+
+/* Form elements */
+.field { margin-bottom: 14px; }
+.field-label { font-size: 10px; letter-spacing: 0.1em; color: var(--ink3); margin-bottom: 6px; }
+.field input, .field textarea, .field select {
+  width: 100%; padding: 10px 12px; font-size: 13px; font-family: var(--font);
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--bg2);
+  color: var(--ink); outline: none; resize: vertical;
+  transition: border-color 0.15s;
+}
+.field input:focus, .field textarea:focus { border-color: var(--ink); background: var(--bg); }
+.field textarea { min-height: 100px; line-height: 1.6; }
+.tag-input-area { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg2); min-height: 42px; cursor: text; }
+.tag-input-area:focus-within { border-color: var(--ink); background: var(--bg); }
+.tag-chip { font-size: 11px; padding: 2px 8px; background: var(--bg3); border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+.tag-chip .remove { cursor: pointer; opacity: 0.5; font-size: 13px; }
+.tag-chip .remove:hover { opacity: 1; }
+.tag-input { border: none; outline: none; background: transparent; font-family: var(--font); font-size: 12px; color: var(--ink); flex: 1; min-width: 80px; }
+.hint { font-size: 10px; color: var(--ink3); margin-top: 5px; }
+
+/* Compose screen */
+.compose-step { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.step-num { font-size: 10px; letter-spacing: 0.1em; color: var(--ink3); margin-bottom: 10px; }
+.template-grid { display: flex; flex-direction: column; gap: 1px; background: var(--line); }
+.tmpl-row { background: var(--bg); padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.1s; }
+.tmpl-row:active { background: var(--bg2); }
+.tmpl-row.selected { background: var(--ink); color: var(--bg); }
+.tmpl-row.selected .tmpl-desc { color: rgba(255,255,255,0.5); }
+.tmpl-name { font-size: 13px; font-weight: 500; }
+.tmpl-desc { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+.tmpl-sel-icon { font-size: 16px; }
+.raw-input { width: 100%; padding: 12px; font-size: 13px; font-family: var(--font); border: none; background: transparent; color: var(--ink); outline: none; min-height: 120px; resize: none; line-height: 1.7; }
+.preview-block { background: var(--bg2); margin: 16px 20px; border-radius: var(--r); padding: 14px; font-size: 12px; line-height: 1.8; color: var(--ink2); white-space: pre-wrap; word-break: break-word; border: 1px solid var(--line); }
+.preview-block .hl { color: var(--ink); font-weight: 500; }
+.copy-bar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; padding: 12px 20px 28px; background: var(--bg); border-top: 1px solid var(--line); z-index: 40; }
+.copy-btn { width: 100%; padding: 13px; background: var(--ink); color: var(--bg); border: none; border-radius: var(--r); font-size: 13px; font-weight: 500; letter-spacing: 0.1em; cursor: pointer; font-family: var(--font); transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.copy-btn:active { opacity: 0.75; }
+.copy-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Log / Stats */
+.stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.stat-cell { background: var(--bg); padding: 16px 20px; }
+.stat-num { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; }
+.stat-label { font-size: 10px; color: var(--ink3); letter-spacing: 0.08em; margin-top: 3px; }
+.bar-list { margin: 0 20px; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bar-lbl { font-size: 11px; color: var(--ink3); width: 64px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--ink); border-radius: 2px; transition: width 0.4s ease; }
+.bar-val { font-size: 11px; color: var(--ink3); width: 20px; text-align: right; }
+.month-chart { display: flex; align-items: flex-end; gap: 4px; height: 56px; margin: 16px 20px 0; }
+.month-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.month-fill { width: 100%; background: var(--bg3); border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.4s ease; }
+.month-fill.current { background: var(--ink); }
+.month-lbl { font-size: 9px; color: var(--ink3); letter-spacing: 0.05em; }
+
+/* Toast */
+#toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); font-size: 12px; letter-spacing: 0.06em; padding: 10px 20px; border-radius: 20px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 200; }
+#toast.show { opacity: 1; }
+
+/* Template detail modal additions */
+.template-body-preview { font-size: 12px; color: var(--ink3); line-height: 1.8; white-space: pre-wrap; padding: 10px 12px; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--r); margin-top: 4px; max-height: 120px; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="header-top">
+      <div class="wordmark">PROMPT<span>GROW</span></div>
+      <div class="header-action" id="header-action">+ NEW</div>
+    </div>
+  </div>
+  <div id="tabs">
+    <div class="tab active" data-tab="stock" onclick="switchTab('stock')">STOCK</div>
+    <div class="tab" data-tab="compose" onclick="switchTab('compose')">COMPOSE</div>
+    <div class="tab" data-tab="log" onclick="switchTab('log')">LOG</div>
+  </div>
+  <div id="content">
+
+    <!-- STOCK -->
+    <div class="screen active" id="screen-stock">
+      <div id="stock-list-container"></div>
+    </div>
+
+    <!-- COMPOSE -->
+    <div class="screen" id="screen-compose">
+      <div class="compose-step">
+        <div class="step-num">01 — TEMPLATE</div>
+        <div class="template-grid" id="template-select"></div>
+        <div style="padding-top:10px">
+          <div class="empty-text" id="no-template-msg" style="display:none">テンプレートがありません。まず「TEMPLATE」タブで作成してください。</div>
+        </div>
+      </div>
+      <div class="compose-step" style="border-bottom:none">
+        <div class="step-num">02 — RAW DATA</div>
+        <textarea class="raw-input" id="raw-input" placeholder="今日の閃き・メモ・素材を貼り付け..." oninput="updatePreview()"></textarea>
+      </div>
+      <div class="preview-block" id="preview-block">テンプレートを選択してください</div>
+      <div style="height:80px"></div>
+      <div class="copy-bar">
+        <button class="copy-btn" id="copy-btn" onclick="copyPrompt()" disabled>
+          <span>COPY PROMPT</span>
+          <span style="font-size:16px;opacity:0.6">⎘</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="screen" id="screen-log">
+      <div id="log-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Idea Modal (add/edit stock) -->
+<div class="modal-overlay" id="idea-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="idea-modal-title">NEW IDEA</div>
+    <div class="field">
+      <div class="field-label">TITLE</div>
+      <input type="text" id="idea-title" placeholder="アイデアのタイトル">
+    </div>
+    <div class="field">
+      <div class="field-label">BODY</div>
+      <textarea id="idea-body" rows="4" placeholder="メモ・素材・閃き..."></textarea>
+    </div>
+    <div class="field">
+      <div class="field-label">TAGS</div>
+      <div class="tag-input-area" id="tag-area" onclick="focusTagInput()">
+        <input class="tag-input" id="tag-input" placeholder="タグを入力してEnter" onkeydown="handleTagInput(event)">
+      </div>
+      <div class="hint">Enterで追加、×で削除</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('idea-modal')">CANCEL</button>
+      <button class="btn btn-primary" onclick="saveIdea()">SAVE</button>
+    </div>
+    <div id="idea-delete-area" style="margin-top:10px;display:none">
+      <button class="btn btn-danger" style="width:100%" onclick="deleteIdea()">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template Modal -->
+<div class="modal-overlay" id="tmpl-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="tmpl-modal-title">NEW TEMPLATE</div>
+    <div class="field">
+      <div class="field-label">TEMPLATE NAME</div>
+      <input type="text" id="tmpl-name" placeholder="例: 企画書レビュー">
+    </div>
+    <div class="field">
+      <div class="field-label">DESCRIPTION</div>
+      <input type="text" id="tmpl-desc" placeholder="一行説明（任意）">
+    </div>
+    <div class="field">
+      <div class="field-label">TEMPLATE BODY</div>
+      <textarea id="tmpl-body" rows="7" placeholder="前提条件や構造を書く&#10;&#10;例:&#10;あなたは優秀な編集者です。以下の文章を〇〇の観点でレビューしてください。&#10;&#10;目的：&#10;読み手：&#10;文章："></textarea>
+      <div class="hint">{{raw}} と書くと、入力した生データがその位置に挿入されます</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('tmpl-modal')">CANCEL</button>
+      <button class="btn btn-primary" onclick="saveTemplate()">SAVE</button>
+    </div>
+    <div id="tmpl-delete-area" style="margin-top:10px;display:none">
+      <button class="btn btn-danger" style="width:100%" onclick="deleteTemplate()">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DB ──────────────────────────────────────────────
+const DB_NAME = 'promptgrow';
+const DB_VER = 1;
+let db;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('ideas')) {
+        const s = d.createObjectStore('ideas', { keyPath: 'id', autoIncrement: true });
+        s.createIndex('createdAt', 'createdAt');
+      }
+      if (!d.objectStoreNames.contains('templates')) {
+        d.createObjectStore('templates', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = e => rej(e);
+  });
+}
+
+function dbGet(store) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror = rej;
+  });
+}
+
+function dbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(obj);
+    req.onsuccess = () => res(req.result);
+    req.onerror = rej;
+  });
+}
+
+function dbDelete(store, id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(id);
+    req.onsuccess = res;
+    req.onerror = rej;
+  });
+}
+
+// ── State ────────────────────────────────────────────
+let currentTab = 'stock';
+let editingIdeaId = null;
+let editingTmplId = null;
+let selectedTmplId = null;
+let currentTags = [];
+let ideas = [], templates = [];
+
+// ── Init ─────────────────────────────────────────────
+openDB().then(async () => {
+  await Promise.all([loadIdeas(), loadTemplates()]);
+  renderStock();
+  renderLog();
+}).catch(e => console.error(e));
+
+async function loadIdeas() {
+  ideas = await dbGet('ideas');
+  ideas.sort((a, b) => b.createdAt - a.createdAt);
+}
+async function loadTemplates() {
+  templates = await dbGet('templates');
+}
+
+// ── Tabs ─────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+
+  const ha = document.getElementById('header-action');
+  if (tab === 'stock') { ha.textContent = '+ NEW'; ha.onclick = () => openIdeaModal(); }
+  else if (tab === 'compose') { ha.textContent = ''; ha.onclick = null; renderCompose(); }
+  else { ha.textContent = ''; ha.onclick = null; renderLog(); }
+
+  if (tab === 'stock') renderStock();
+}
+
+// ── Stock ────────────────────────────────────────────
+function renderStock() {
+  const c = document.getElementById('stock-list-container');
+  if (!ideas.length) {
+    c.innerHTML = `<div class="empty"><div class="empty-icon">◎</div><div class="empty-text">アイデアがありません<br>右上の + NEW からストックしよう</div></div>`;
+    return;
+  }
+  c.innerHTML = `<div class="card-list">${ideas.map(idea => `
+    <div class="card-item" onclick="openIdeaModal(${idea.id})">
+      <div class="card-body">
+        <div class="card-title">${esc(idea.title)}</div>
+        ${idea.body ? `<div class="card-desc">${esc(idea.body)}</div>` : ''}
+        ${idea.tags && idea.tags.length ? `<div class="card-meta">${idea.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}
+      </div>
+      <div class="card-arrow">›</div>
+    </div>`).join('')}</div>`;
+}
+
+// ── Idea Modal ───────────────────────────────────────
+function openIdeaModal(id) {
+  editingIdeaId = id || null;
+  currentTags = [];
+  const idea = id ? ideas.find(i => i.id === id) : null;
+  document.getElementById('idea-modal-title').textContent = idea ? 'EDIT IDEA' : 'NEW IDEA';
+  document.getElementById('idea-title').value = idea ? idea.title : '';
+  document.getElementById('idea-body').value = idea ? idea.body : '';
+  currentTags = idea && idea.tags ? [...idea.tags] : [];
+  renderTagChips();
+  document.getElementById('idea-delete-area').style.display = idea ? 'block' : 'none';
+  openModal('idea-modal');
+  setTimeout(() => document.getElementById('idea-title').focus(), 300);
+}
+
+function renderTagChips() {
+  const area = document.getElementById('tag-area');
+  const input = document.getElementById('tag-input');
+  const chips = currentTags.map((t, i) => `<div class="tag-chip">${esc(t)}<span class="remove" onclick="removeTag(${i})">×</span></div>`).join('');
+  area.innerHTML = chips;
+  area.appendChild(input);
+}
+
+function focusTagInput() { document.getElementById('tag-input').focus(); }
+
+function handleTagInput(e) {
+  const inp = e.target;
+  if ((e.key === 'Enter' || e.key === ',') && inp.value.trim()) {
+    e.preventDefault();
+    currentTags.push(inp.value.trim());
+    inp.value = '';
+    renderTagChips();
+  } else if (e.key === 'Backspace' && !inp.value && currentTags.length) {
+    currentTags.pop();
+    renderTagChips();
+  }
+}
+
+function removeTag(i) { currentTags.splice(i, 1); renderTagChips(); }
+
+async function saveIdea() {
+  const title = document.getElementById('idea-title').value.trim();
+  if (!title) { toast('タイトルを入力してください'); return; }
+  const obj = {
+    title,
+    body: document.getElementById('idea-body').value.trim(),
+    tags: [...currentTags],
+    createdAt: editingIdeaId ? (ideas.find(i => i.id === editingIdeaId)?.createdAt || Date.now()) : Date.now(),
+    updatedAt: Date.now()
+  };
+  if (editingIdeaId) obj.id = editingIdeaId;
+  await dbPut('ideas', obj);
+  await loadIdeas();
+  renderStock();
+  closeModal('idea-modal');
+  toast('SAVED');
+}
+
+async function deleteIdea() {
+  if (!confirm('このアイデアを削除しますか？')) return;
+  await dbDelete('ideas', editingIdeaId);
+  await loadIdeas();
+  renderStock();
+  closeModal('idea-modal');
+  toast('DELETED');
+}
+
+// ── Compose ──────────────────────────────────────────
+function renderCompose() {
+  const grid = document.getElementById('template-select');
+  const msg = document.getElementById('no-template-msg');
+  if (!templates.length) {
+    grid.innerHTML = '';
+    msg.style.display = 'block';
+    document.getElementById('copy-btn').disabled = true;
+    return;
+  }
+  msg.style.display = 'none';
+  grid.innerHTML = templates.map(t => `
+    <div class="tmpl-row ${t.id === selectedTmplId ? 'selected' : ''}" onclick="selectTemplate(${t.id})">
+      <div>
+        <div class="tmpl-name">${esc(t.name)}</div>
+        ${t.desc ? `<div class="tmpl-desc">${esc(t.desc)}</div>` : ''}
+      </div>
+      <div class="tmpl-sel-icon">${t.id === selectedTmplId ? '✓' : ''}</div>
+    </div>`).join('');
+  updatePreview();
+}
+
+function selectTemplate(id) {
+  selectedTmplId = id;
+  renderCompose();
+}
+
+function updatePreview() {
+  const tmpl = templates.find(t => t.id === selectedTmplId);
+  const raw = document.getElementById('raw-input')?.value?.trim() || '';
+  const block = document.getElementById('preview-block');
+  const btn = document.getElementById('copy-btn');
+  if (!tmpl) { block.innerHTML = 'テンプレートを選択してください'; btn.disabled = true; return; }
+  let body = tmpl.body;
+  if (raw) { body = body.includes('{{raw}}') ? body.replace(/\{\{raw\}\}/g, raw) : body + '\n\n' + raw; }
+  block.innerHTML = `<span class="hl">[${esc(tmpl.name)}]</span>\n${esc(body)}`;
+  btn.disabled = false;
+}
+
+function copyPrompt() {
+  const tmpl = templates.find(t => t.id === selectedTmplId);
+  if (!tmpl) return;
+  const raw = document.getElementById('raw-input').value.trim();
+  let body = tmpl.body;
+  if (raw) { body = body.includes('{{raw}}') ? body.replace(/\{\{raw\}\}/g, raw) : body + '\n\n' + raw; }
+  const text = `[${tmpl.name}]\n${body}`;
+  navigator.clipboard.writeText(text).then(() => toast('COPIED — AIアプリに貼り付けてください ✓')).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); toast('COPIED ✓');
+  });
+}
+
+// ── Log ──────────────────────────────────────────────
+function renderLog() {
+  const c = document.getElementById('log-content');
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const thisMonthIdeas = ideas.filter(i => { const d = new Date(i.createdAt); return d.getMonth() === thisMonth && d.getFullYear() === thisYear; });
+
+  // Tag stats
+  const tagCount = {};
+  ideas.forEach(i => (i.tags || []).forEach(t => { tagCount[t] = (tagCount[t] || 0) + 1; }));
+  const tagEntries = Object.entries(tagCount).sort((a,b) => b[1]-a[1]).slice(0, 6);
+  const maxTag = tagEntries[0]?.[1] || 1;
+
+  // Monthly data (last 6 months)
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(thisYear, thisMonth - i, 1);
+    const m = d.getMonth(); const y = d.getFullYear();
+    const count = ideas.filter(x => { const xd = new Date(x.createdAt); return xd.getMonth() === m && xd.getFullYear() === y; }).length;
+    months.push({ label: (m + 1) + '月', count, isCurrent: i === 0 });
+  }
+  const maxMonth = Math.max(...months.map(m => m.count), 1);
+
+  c.innerHTML = `
+    <div style="padding:16px 20px 0"><div class="sec-label">TODAY'S SUMMARY</div></div>
+    <div class="stat-row">
+      <div class="stat-cell"><div class="stat-num">${ideas.length}</div><div class="stat-label">TOTAL IDEAS</div></div>
+      <div class="stat-cell"><div class="stat-num">${thisMonthIdeas.length}</div><div class="stat-label">THIS MONTH</div></div>
+      <div class="stat-cell"><div class="stat-num">${templates.length}</div><div class="stat-label">TEMPLATES</div></div>
+      <div class="stat-cell"><div class="stat-num">${Object.keys(tagCount).length}</div><div class="stat-label">UNIQUE TAGS</div></div>
+    </div>
+    <div class="sec" style="margin-bottom:12px"><div class="sec-label">TAG FREQUENCY</div></div>
+    <div class="bar-list">
+      ${tagEntries.length ? tagEntries.map(([tag, count]) => `
+        <div class="bar-row">
+          <span class="bar-lbl">${esc(tag)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count/maxTag*100)}%"></div></div>
+          <span class="bar-val">${count}</span>
+        </div>`).join('') : '<div class="empty-text">タグがまだありません</div>'}
+    </div>
+    <div class="sec" style="margin-top:16px;margin-bottom:8px"><div class="sec-label">MONTHLY IDEAS</div></div>
+    <div class="month-chart">
+      ${months.map(m => `
+        <div class="month-bar">
+          <div class="month-fill ${m.isCurrent ? 'current' : ''}" style="height:${Math.round(m.count/maxMonth*44)}px"></div>
+          <div class="month-lbl">${m.label}</div>
+        </div>`).join('')}
+    </div>
+    <div style="padding:16px 20px 0;margin-top:16px"><div class="sec-label">TEMPLATES</div></div>
+    <div class="card-list">
+      ${templates.length ? templates.map(t => `
+        <div class="card-item" onclick="openTmplModal(${t.id})">
+          <div class="card-body">
+            <div class="card-title">${esc(t.name)}</div>
+            ${t.desc ? `<div class="card-desc">${esc(t.desc)}</div>` : ''}
+          </div>
+          <div class="card-arrow">›</div>
+        </div>`).join('') : '<div class="empty" style="padding:20px"><div class="empty-text">テンプレートなし</div></div>'}
+    </div>
+    <div style="padding:12px 20px"><button class="btn btn-primary" style="width:100%" onclick="openTmplModal()">+ NEW TEMPLATE</button></div>
+  `;
+}
+
+// ── Template Modal ───────────────────────────────────
+function openTmplModal(id) {
+  editingTmplId = id || null;
+  const tmpl = id ? templates.find(t => t.id === id) : null;
+  document.getElementById('tmpl-modal-title').textContent = tmpl ? 'EDIT TEMPLATE' : 'NEW TEMPLATE';
+  document.getElementById('tmpl-name').value = tmpl ? tmpl.name : '';
+  document.getElementById('tmpl-desc').value = tmpl ? (tmpl.desc || '') : '';
+  document.getElementById('tmpl-body').value = tmpl ? tmpl.body : '';
+  document.getElementById('tmpl-delete-area').style.display = tmpl ? 'block' : 'none';
+  openModal('tmpl-modal');
+  setTimeout(() => document.getElementById('tmpl-name').focus(), 300);
+}
+
+async function saveTemplate() {
+  const name = document.getElementById('tmpl-name').value.trim();
+  const body = document.getElementById('tmpl-body').value.trim();
+  if (!name) { toast('テンプレート名を入力してください'); return; }
+  if (!body) { toast('テンプレート本文を入力してください'); return; }
+  const obj = { name, desc: document.getElementById('tmpl-desc').value.trim(), body };
+  if (editingTmplId) obj.id = editingTmplId;
+  await dbPut('templates', obj);
+  await loadTemplates();
+  if (currentTab === 'log') renderLog();
+  if (currentTab === 'compose') renderCompose();
+  closeModal('tmpl-modal');
+  toast('SAVED');
+}
+
+async function deleteTemplate() {
+  if (!confirm('このテンプレートを削除しますか？')) return;
+  await dbDelete('templates', editingTmplId);
+  if (selectedTmplId === editingTmplId) selectedTmplId = null;
+  await loadTemplates();
+  if (currentTab === 'log') renderLog();
+  if (currentTab === 'compose') renderCompose();
+  closeModal('tmpl-modal');
+  toast('DELETED');
+}
+
+// ── Modal helpers ────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ── Toast ────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Utils ────────────────────────────────────────────
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Header action default
+document.getElementById('header-action').onclick = () => openIdeaModal();
+</script>
+</body>
+</html>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW:', e));
+  });
+}
+</script>
